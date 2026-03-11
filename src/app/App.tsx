@@ -72,6 +72,140 @@ function getIterationStageAlert(iteration: DashboardState["iterationSummaries"][
   return "";
 }
 
+function renderMajorVersionGanttBoard(derived: DashboardState) {
+  const timelineRows = derived.scopedTimelines
+    .slice()
+    .sort((a, b) => (a.startDate || "9999-12-31").localeCompare(b.startDate || "9999-12-31", "zh-CN"));
+
+  const datedRows = timelineRows.filter((item) => item.startDate && item.endDate);
+  const globalStart = datedRows[0]?.startDate ?? "";
+  const globalEnd = datedRows.reduce((latest, item) => (item.endDate > latest ? item.endDate : latest), globalStart);
+  const totalDays = globalStart && globalEnd ? Math.max((daysBetween(globalStart, globalEnd) ?? 0) + 1, 1) : 1;
+
+  const lanes = derived.majorSummaries
+    .map((major) => {
+      const items = timelineRows.filter((item) => item.versionLine === major.versionLine);
+      const startDate = items.reduce((earliest, item) => {
+        if (!item.startDate) return earliest;
+        if (!earliest || item.startDate < earliest) return item.startDate;
+        return earliest;
+      }, "");
+      const endDate = items.reduce((latest, item) => (item.endDate > latest ? item.endDate : latest), "");
+      return { ...major, items, startDate, endDate };
+    })
+    .filter((lane) => lane.items.length > 0);
+
+  const today = todayLocalStr();
+
+  return (
+    <section className="panel space-y-3">
+      <div>
+        <div className="panel-title">按大版本泳道的完整甘特看板</div>
+        <div className="text-xs text-slate-500">突出大版本整体时间窗，并在泳道内展开全部小迭代周期条</div>
+      </div>
+
+      <div className="overflow-x-auto">
+        <div className="min-w-[1200px] space-y-3">
+          <div className="grid grid-cols-[220px_1fr] gap-3">
+            <div />
+            <div className="relative h-8 rounded-lg border border-slate-200 bg-slate-50">
+              {datedRows.map((item) => {
+                const left = (((daysBetween(globalStart, item.startDate) ?? 0) / totalDays) * 100);
+                return (
+                  <div
+                    key={`${item.id}-tick`}
+                    className="absolute top-0 h-full border-l border-dashed border-slate-300"
+                    style={{ left: `${left}%` }}
+                  >
+                    <span className="absolute left-1 top-1 text-[10px] text-slate-500">{item.startDate.slice(5)}</span>
+                  </div>
+                );
+              })}
+              {globalStart && globalEnd ? (
+                <div
+                  className="absolute top-0 h-full border-l-2 border-rose-400"
+                  style={{ left: `${(((daysBetween(globalStart, today) ?? 0) / totalDays) * 100).toFixed(2)}%` }}
+                />
+              ) : null}
+            </div>
+          </div>
+
+          {lanes.map((lane) => {
+            const laneLeft = (((daysBetween(globalStart, lane.startDate) ?? 0) / totalDays) * 100);
+            const laneWidth = ((((daysBetween(lane.startDate, lane.endDate) ?? 0) + 1) / totalDays) * 100);
+            const laneStatus = getTimelineStatus({ startDate: lane.startDate, endDate: lane.endDate });
+
+            return (
+              <div key={lane.versionLine} className="grid grid-cols-[220px_1fr] gap-3">
+                <div className="rounded-xl border border-slate-200 bg-white p-3">
+                  <div className="text-base font-semibold text-slate-900">{lane.versionLine}</div>
+                  <div className="mt-1 text-[11px] text-slate-500">大版本窗口</div>
+                  <div className="text-sm text-slate-700">{lane.startDate || "-"} ~ {lane.endDate || "-"}</div>
+                  <div className={cx("mt-2 inline-flex rounded-md border px-2 py-1 text-[11px] font-semibold", badgeTone(laneStatus.tone))}>
+                    {laneStatus.label}
+                  </div>
+                  <div className="mt-2 text-[11px] text-slate-500">
+                    小迭代 {lane.items.length} / 问题单 {lane.total} / 未关闭 DI {formatDI(lane.openDI)}
+                  </div>
+                </div>
+
+                <div className="rounded-xl border border-slate-200 bg-white p-3">
+                  <div className="relative h-9 rounded-lg bg-slate-100">
+                    <div
+                      className={cx("absolute top-0 h-9 rounded-lg", laneStatus.overdue ? "bg-rose-200/90" : "bg-slate-300/70")}
+                      style={{ left: `${laneLeft}%`, width: `${laneWidth}%` }}
+                    />
+                    <div
+                      className={cx("absolute top-0 h-9 rounded-lg", laneStatus.overdue ? "bg-rose-500/80" : "bg-slate-500/70")}
+                      style={{ left: `${laneLeft}%`, width: `${Math.max((laneWidth * laneStatus.progress) / 100, 2)}%` }}
+                    />
+                    <div className="absolute inset-y-0 left-3 flex items-center text-xs font-semibold text-slate-800">
+                      {lane.versionLine} {lane.startDate || "-"} ~ {lane.endDate || "-"}
+                    </div>
+                  </div>
+
+                  <div className="mt-3 space-y-2">
+                    {lane.items.map((item) => {
+                      const left = (((daysBetween(globalStart, item.startDate) ?? 0) / totalDays) * 100);
+                      const width = ((((daysBetween(item.startDate, item.endDate) ?? 0) + 1) / totalDays) * 100);
+                      const iteration = derived.iterationSummaries.find((node) => node.fullVersion === item.fullVersion);
+                      const status = getTimelineStatus(item);
+                      const stageProgress = iteration?.items.length
+                        ? Math.round(((Math.max(...iteration.items.map((req) => Math.max(stageIndex(req.stage), 0))) + 1) / requirementStages.length) * 100)
+                        : 0;
+                      return (
+                        <div key={item.id} className="grid grid-cols-[180px_1fr] items-center gap-3">
+                          <div className="text-xs text-slate-600">
+                            <div className="font-medium text-slate-800">{item.fullVersion}</div>
+                            <div>{item.startDate} ~ {item.endDate}</div>
+                          </div>
+                          <div className="relative h-8 rounded-lg bg-slate-50">
+                            <div
+                              className={cx("absolute top-1 h-6 rounded-md border", status.overdue ? "border-rose-300 bg-rose-100" : status.tone === "warn" ? "border-amber-300 bg-amber-100" : "border-cyan-300 bg-cyan-100")}
+                              style={{ left: `${left}%`, width: `${width}%` }}
+                            />
+                            <div
+                              className={cx("absolute top-1 h-6 rounded-md", status.overdue && stageProgress < 70 ? "bg-rose-500" : "bg-cyan-500")}
+                              style={{ left: `${left}%`, width: `${Math.max((width * stageProgress) / 100, 1.5)}%` }}
+                            />
+                            <div className="absolute inset-y-0 left-3 flex items-center text-[11px] font-medium text-slate-700">
+                              {item.fullVersion} / 阶段推进 {stageProgress}% / {iteration?.blockerStages.join("、") || "无卡点"}
+                            </div>
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
+                </div>
+              </div>
+            );
+          })}
+        </div>
+      </div>
+    </section>
+  );
+}
+
 type DashboardState = ReturnType<typeof selectDerived>;
 type QuickStat = {
   label: string;
@@ -772,6 +906,7 @@ export function App() {
       {renderTopFilters(derived, store)}
       {renderIterationRequirementBoard(derived)}
       {renderMajorVersionIssueBoard(derived)}
+      {renderMajorVersionGanttBoard(derived)}
       <div className="grid gap-4 xl:grid-cols-[1.05fr_0.95fr]">
         {renderTeamIssueDIPanel(derived)}
         {renderOwnerFollowupPanel(derived)}
