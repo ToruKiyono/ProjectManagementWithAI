@@ -1,0 +1,70 @@
+import type { VersionInfo } from "./version";
+
+export const issueStatuses = ["待确定", "已接纳", "修复中", "已修复", "已转测", "待验收", "关闭"] as const;
+export const issueSeverities = ["提示", "一般", "严重", "致命"] as const;
+
+export type IssueStatus = (typeof issueStatuses)[number];
+export type IssueSeverity = (typeof issueSeverities)[number];
+
+export type IssueVersionRelation = "current-major" | "old-major" | "none" | "current" | "old";
+
+export type Issue = VersionInfo & {
+  id: string;
+  title: string;
+  description: string;
+  requirementId: string;
+
+  severity: IssueSeverity;
+  severityRaw: string;
+  severityScore: number;
+
+  owner: string;
+  tester: string;
+  currentOwner: string;
+  devOwner: string;
+  testOwner: string;
+  team: string;
+
+  status: IssueStatus;
+  stage: string;
+  issueStage: string;
+  category: string;
+  priority: string;
+  environment: string;
+  foundPhase: string;
+  foundWay: string;
+  foundSite: string;
+  foundService: string;
+  affectScope: string;
+  rootCause: string;
+  conclusionSummary: string;
+  conclusionDesc: string;
+  solutionPlan: string;
+  deliveryScene: string;
+  foundVersion: string;
+  foundIteration: string;
+  versionRelation: IssueVersionRelation;
+
+  legacyReasonAnalysis: string;
+  legacyMitigation: string;
+  legacyUserImpact: string;
+
+  createdAt: string;
+  dueDate: string;
+  acceptTime: string;
+  fixStartTime: string;
+  transferTestTime: string;
+  fixedTime: string;
+  onlineTime: string;
+  closeTime: string;
+
+  tags: string[];
+  riskOwner: string;
+  submitLagDays: number | null;
+  analysisLagDays: number | null;
+  fixLagDays: number | null;
+  modifyLagDays: number | null;
+  testLagDays: number | null;
+  isLegacyIssue: boolean;
+  raw: Record<string, unknown>;
+};

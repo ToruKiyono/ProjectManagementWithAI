@@ -1,0 +1,82 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  --bg: #edf2f7;
+  --panel: rgba(255, 255, 255, 0.92);
+  --line: #d8e1ea;
+  --text: #17212b;
+  --muted: #5d6b79;
+  --accent: #0f766e;
+}
+
+@layer base {
+  html {
+    color-scheme: light;
+  }
+
+  body {
+    @apply min-h-screen text-slate-800;
+    background:
+      radial-gradient(circle at top left, rgba(15, 118, 110, 0.12), transparent 28%),
+      radial-gradient(circle at top right, rgba(14, 116, 144, 0.12), transparent 24%),
+      linear-gradient(180deg, #f7fafc 0%, var(--bg) 100%);
+    color: var(--text);
+    font-family: "Microsoft YaHei", "PingFang SC", sans-serif;
+  }
+
+  summary::-webkit-details-marker {
+    display: none;
+  }
+}
+
+@layer components {
+  .panel {
+    @apply rounded-2xl border p-4 shadow-sm backdrop-blur-sm;
+    border-color: var(--line);
+    background: var(--panel);
+  }
+
+  .panel-title {
+    @apply text-base font-semibold text-slate-900;
+  }
+
+  .input {
+    @apply w-full rounded-lg border bg-white px-3 py-2 text-sm text-slate-800 outline-none transition focus:ring-2 focus:ring-teal-500/20;
+    border-color: #c9d4df;
+  }
+
+  .btn {
+    @apply inline-flex items-center justify-center rounded-lg px-4 py-2 text-sm font-semibold text-white transition;
+    background: linear-gradient(135deg, #0f766e, #0e7490);
+  }
+
+  .btn:hover {
+    filter: brightness(0.96);
+  }
+
+  .btn-secondary {
+    @apply inline-flex items-center justify-center rounded-lg border bg-white px-4 py-2 text-sm font-semibold text-slate-700 transition hover:bg-slate-50;
+    border-color: #c9d4df;
+  }
+
+  .table-wrap {
+    @apply overflow-x-auto rounded-xl border;
+    border-color: var(--line);
+  }
+
+  .table {
+    @apply min-w-full border-collapse text-sm;
+  }
+
+  .table th {
+    @apply border-b bg-slate-50/90 px-3 py-2 text-left font-medium text-slate-500;
+    border-color: #dbe4ee;
+  }
+
+  .table td {
+    @apply border-b px-3 py-2 align-top text-slate-700;
+    border-color: #edf2f7;
+  }
+}
