@@ -1,4 +1,17 @@
-import { useMemo } from "react";
+import { useEffect, useMemo } from "react";
+import { AIActionBar } from "../components/ai/AIActionBar";
+import { AIJobStatusPanel } from "../components/ai/AIJobStatusPanel";
+import { AIFollowupPanel } from "../components/ai/AIFollowupPanel";
+import { AIRecognitionPanel } from "../components/ai/AIRecognitionPanel";
+import { AIReleaseRiskPanel } from "../components/ai/AIReleaseRiskPanel";
+import { AISummaryBanner } from "../components/ai/AISummaryBanner";
+import { AITransferRiskPanel } from "../components/ai/AITransferRiskPanel";
+import { HighlightedIssueRisks } from "../components/ai/HighlightedIssueRisks";
+import { HighlightedOwners } from "../components/ai/HighlightedOwners";
+import { HighlightedRequirementRisks } from "../components/ai/HighlightedRequirementRisks";
+import { AuditStatusPanel } from "../components/audit/AuditStatusPanel";
+import { AuditSummaryBanner } from "../components/audit/AuditSummaryBanner";
+import { SelfAuditCenter } from "../components/audit/SelfAuditCenter";
 import { SyncPanel } from "../components/sync/SyncPanel";
 import type { Issue } from "../domain/models/issue";
 import { issueStatuses } from "../domain/models/issue";
@@ -9,6 +22,7 @@ import {
   getMilestoneTone,
   type VersionTimelineMilestoneView
 } from "../domain/services/compute/versionTimeline";
+import { extractUntrustedItemIds } from "../domain/services/audit/selfAudit";
 import { seedVersionTimelineConfigs } from "../seed/versionTimelineSeed";
 import type { ProjectState } from "../store/useProjectStore";
 import { selectDerived, useProjectStore } from "../store/useProjectStore";
@@ -217,6 +231,7 @@ function renderVersionTimelineBoard(store: ProjectState, timelineBoard: Timeline
                       {nodes.length ? (
                         nodes.map((node) => (
                           <button
+                            id={`timeline-${node.id}`}
                             key={`${row.releaseVersion}-${node.dateLabel}-${node.cycleVersion || node.label}`}
                             type="button"
                             title={getMilestoneTooltip(node)}
@@ -455,8 +470,8 @@ function renderMajorVersionIssueBoard(derived: DashboardState) {
   return (
     <section className="panel space-y-3">
       <div>
-        <div className="panel-title">版本问题与发布阻塞</div>
-        <div className="text-xs text-slate-500">按版本线聚合问题单、严重度和发布阻塞原因，辅助判断时间轴节奏是否可落地。</div>
+          <div className="panel-title">大版本问题单管控驾驶舱</div>
+          <div className="text-xs text-slate-500">按大版本聚合问题单、严重度、DI 和发布阻塞原因，作为问题单主视图。</div>
       </div>
 
       <div className="space-y-3">
@@ -654,7 +669,7 @@ function renderOwnerFollowupPanel(derived: DashboardState) {
   return (
     <section className="panel space-y-4">
       <div>
-        <div className="panel-title">责任人跟进视图</div>
+          <div className="panel-title">责任人盯办视图</div>
         <div className="text-xs text-slate-500">集中暴露高风险需求责任人和高风险问题单责任人，便于会中直接追责与推进。</div>
       </div>
 
@@ -838,6 +853,8 @@ function renderIssueTable(derived: DashboardState, store: ProjectState) {
 export function App() {
   const store = useProjectStore();
   const derived = useMemo(() => selectDerived(store), [store]);
+  const safeAuditFindings = Array.isArray(store.selfAudit?.findings) ? store.selfAudit.findings : [];
+  const untrusted = useMemo(() => extractUntrustedItemIds(safeAuditFindings), [safeAuditFindings]);
   const timelineBoard = useMemo(
     () =>
       buildVersionTimelineBoardView({
@@ -853,6 +870,12 @@ export function App() {
       }),
     [derived, store.filters.releaseVersion, store.filters.versionLine]
   );
+
+  useEffect(() => {
+    if (!store.aiTransferRiskResults.length && !store.aiReleaseRiskResults.length && !store.aiLoading) {
+      void store.rerunAIAnalysis({ scope: "all_files", steps: ["transfer", "release", "followup", "highlight"] });
+    }
+  }, [store]);
 
   return (
     <main className="mx-auto max-w-[1900px] space-y-4 px-4 py-4">
@@ -872,7 +895,64 @@ export function App() {
         </div>
       ) : null}
 
+      {store.aiErrors.length ? (
+        <div className="rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-800">
+          <div className="flex items-center justify-between gap-3">
+            <span>{store.aiErrors.join("；")}</span>
+            <button className="btn-secondary" onClick={store.clearAIErrors}>
+              关闭
+            </button>
+          </div>
+        </div>
+      ) : null}
+
       <SyncPanel />
+      <AISummaryBanner
+        recognitionCount={store.aiRecognitionResults.length}
+        highlightedRequirements={store.highlightedRequirementRisks}
+        highlightedIssues={store.highlightedIssueRisks}
+        highlightedOwners={store.highlightedOwners}
+        releaseResults={store.aiReleaseRiskResults}
+      />
+      <AIJobStatusPanel
+        job={store.aiJob}
+        busy={store.aiLoading}
+        onRetryAll={() => void store.rerunAIAnalysis({ scope: store.aiJob.lastScope || "all_files" })}
+        onRetryStep={(step, scope) => void store.retryAIStep(step, scope)}
+      />
+      <AIActionBar
+        busy={store.aiLoading}
+        onRunAll={(scope) => void store.rerunAIAnalysis({ scope })}
+        onRunStep={(step, scope) => void store.retryAIStep(step, scope)}
+      />
+      <AuditSummaryBanner report={store.selfAudit.report} />
+      <AuditStatusPanel
+        audit={store.selfAudit}
+        onRunAll={() => void store.triggerSelfAudit()}
+        onRunScope={(scope) => void store.triggerPartialAudit(scope)}
+        onClear={store.clearSelfAuditResult}
+        onToggleEnabled={store.setSelfAuditEnabled}
+      />
+      <HighlightedOwners items={store.highlightedOwners} untrustedOwnerNames={untrusted.ownerNames} />
+      <div className="grid gap-4 xl:grid-cols-[1fr_1fr]">
+        <HighlightedRequirementRisks items={store.highlightedRequirementRisks} onOpen={(iterationKey) => store.setIterationFilter(iterationKey)} untrustedRequirementIds={untrusted.requirementIds} />
+        <HighlightedIssueRisks
+          items={store.highlightedIssueRisks}
+          untrustedIssueIds={untrusted.issueIds}
+          onOpen={(item) => {
+            store.setVersionLineFilter(item.versionLine || "全部");
+            store.setReleaseVersionFilter(item.releaseVersion || "全部");
+            if (item.foundIteration) store.setIterationFilter(item.foundIteration);
+          }}
+        />
+      </div>
+      <AIRecognitionPanel items={store.aiRecognitionResults} onOverride={store.overrideRecognition} untrustedFiles={untrusted.fileNames} />
+      <div className="grid gap-4 xl:grid-cols-[1fr_1fr]">
+        <AITransferRiskPanel items={store.aiTransferRiskResults} untrustedIterations={untrusted.iterationKeys} />
+        <AIReleaseRiskPanel items={store.aiReleaseRiskResults} untrustedReleaseKeys={untrusted.releaseKeys} />
+      </div>
+      <AIFollowupPanel items={store.aiFollowupSuggestions} />
+      <SelfAuditCenter audit={store.selfAudit} />
       {renderTopFilters(derived, store, timelineBoard)}
       {renderVersionTimelineBoard(store, timelineBoard)}
       {renderIterationRequirementBoard(derived)}

@@ -8,18 +8,23 @@ import { parseVersionInfo } from "./parseVersionInfo";
 const severityMap: Record<string, Issue["severity"]> = {
   提示: "提示",
   低: "提示",
+  LOW: "提示",
   P3: "提示",
   S3: "提示",
   一般: "一般",
   中: "一般",
+  MEDIUM: "一般",
   P2: "一般",
   S2: "一般",
   严重: "严重",
   高: "严重",
+  HIGH: "严重",
   P1: "严重",
   S1: "严重",
   致命: "致命",
   紧急: "致命",
+  URGENT: "致命",
+  CRITICAL: "致命",
   P0: "致命",
   S0: "致命"
 };
@@ -31,16 +36,16 @@ const severityScoreMap: Record<Issue["severity"], number> = {
   致命: 5
 };
 
-export function computeIssueDI(issue: Pick<Issue, "severity"> | Record<string, unknown>): number {
-  const severity = "severity" in issue ? String(issue.severity) : String(pickFirst(issue, ["严重程度", "severity", "优先级"]) || "");
-  const normalized = normalizeIssueSeverity(severity);
-  return severityScoreMap[normalized];
-}
-
 export function normalizeIssueSeverity(value: unknown): Issue["severity"] {
   const raw = String(value ?? "").trim();
+  const upper = raw.toUpperCase();
   if (!raw) return "一般";
-  return severityMap[raw.toUpperCase?.() ? raw.toUpperCase() : raw] || severityMap[raw] || "一般";
+  return severityMap[upper] || severityMap[raw] || "一般";
+}
+
+export function computeIssueDI(issue: Pick<Issue, "severity"> | Record<string, unknown>): number {
+  const severity = "severity" in issue ? String(issue.severity) : String(pickFirst(issue, ["严重程度", "severity", "优先级"]) || "");
+  return severityScoreMap[normalizeIssueSeverity(severity)];
 }
 
 export function inferIssueStatus(input: Record<string, unknown>): Issue["status"] {
@@ -49,20 +54,20 @@ export function inferIssueStatus(input: Record<string, unknown>): Issue["status"
   const suspended = String(pickFirst(input, ["挂起/撤销"]) || "");
   const closeMode = String(pickFirst(input, ["关闭方式"]) || "");
 
-  if (suspended.includes("撤销") || closeMode || status.includes("关闭")) return "关闭";
-  if (stage.includes("待验收") || status.includes("验证")) return "待验收";
-  if (stage.includes("转测") || stage.includes("测试") || status.includes("转测")) return "已转测";
+  if (suspended.includes("撤销") || suspended.includes("关闭") || closeMode || status.includes("关闭")) return "关闭";
+  if (stage.includes("待验收") || status.includes("验收")) return "待验收";
+  if (stage.includes("已转测") || stage.includes("转测") || status.includes("已转测") || (status.includes("修复完成") && stage.includes("转测"))) return "已转测";
   if (status.includes("修复完成") || status.includes("已修复")) return "已修复";
   if (stage.includes("修改中") || status.includes("修复中") || status === "修复") return "修复中";
-  if (status.includes("接纳") || status.includes("分析") || stage.includes("分析")) return "已接纳";
-  return issueStatuses[0];
+  if (status.includes("接纳") || status.includes("已接纳") || status.includes("分析") || stage.includes("定位") || stage.includes("分析")) return "已接纳";
+  return "待确定";
 }
 
 function inferTeam(input: Record<string, unknown>): string {
   const direct = String(pickFirst(input, ["团队", "team", "责任服务"]) || "").trim();
   if (direct) return direct;
   const title = String(pickFirst(input, ["问题标题", "title"]) || "");
-  const matched = title.match(/【[^】]+】【([^】]+)】/);
+  const matched = title.match(/【[^】]+】\s*【([^】]+)】/);
   return matched?.[1] ?? "";
 }
 

@@ -37,7 +37,7 @@ function buildOwnerList(values: string[]) {
 
 function getStageBucket(stage: string) {
   if (["需求基线", "需求澄清", "设计文档编写", "需求会签", "需求评审", "需求串讲"].includes(stage)) return "前置准备";
-  if (stage === "需求开发（跟进度）") return "开发中";
+  if (stage === "需求开发") return "开发中";
   if (stage === "需求转测") return "转测中";
   if (stage === "问题单清理") return "清理中";
   if (stage === "需求上线") return "已上线";
@@ -45,7 +45,7 @@ function getStageBucket(stage: string) {
 }
 
 function countMissingCriticalStageDates(requirements: Requirement[]) {
-  const criticalStages = ["需求开发（跟进度）", "需求转测", "问题单清理", "需求上线"];
+  const criticalStages = ["需求开发", "需求转测", "问题单清理", "需求上线"];
   let count = 0;
   requirements.forEach((requirement) => {
     criticalStages.forEach((stage) => {

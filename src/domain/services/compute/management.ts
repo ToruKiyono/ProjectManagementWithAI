@@ -251,10 +251,10 @@ export function detectRequirementRisks(requirements: Requirement[], timelines: I
     if (iterationEndLeadDays !== null && iterationEndLeadDays <= 3 && currentStageIndex < stageIndex("需求转测")) {
       reasons.push({ level: "high", reason: "小迭代窗口即将结束，但需求仍未进入转测" });
     }
-    if (item.progressPercent < 40 && currentStageIndex >= stageIndex("需求开发（跟进度）")) {
+    if (item.progressPercent < 40 && currentStageIndex >= stageIndex("需求开发")) {
       reasons.push({ level: "medium", reason: `进度明显滞后 (${item.progressPercent}%)` });
     }
-    if (iterationLateStage >= stageIndex("需求转测") && currentStageIndex >= 0 && currentStageIndex < stageIndex("需求开发（跟进度）")) {
+    if (iterationLateStage >= stageIndex("需求转测") && currentStageIndex >= 0 && currentStageIndex < stageIndex("需求开发")) {
       reasons.push({ level: "medium", reason: "同迭代整体已进入后期，但该需求仍停留在早期阶段" });
     }
 

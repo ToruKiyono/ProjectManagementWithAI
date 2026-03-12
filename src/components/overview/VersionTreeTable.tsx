@@ -92,7 +92,7 @@ export function VersionTreeTable({ tree, onSelect }: Props) {
                               </button>
                             </td>
                             <td>{item.totalRequirements}</td>
-                            <td>{item.stageDistribution["需求开发（跟进度）"] || 0}</td>
+                            <td>{item.stageDistribution["需求开发"] || 0}</td>
                             <td>{item.stageDistribution["需求转测"] || 0}</td>
                             <td>{item.onlineRequirements}</td>
                             <td>{item.riskRequirementCount}</td>

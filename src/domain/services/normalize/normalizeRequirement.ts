@@ -11,7 +11,7 @@ const stageFieldAliases: Record<string, string[]> = {
   需求会签: ["需求会签", "会签"],
   需求评审: ["需求评审"],
   需求串讲: ["需求串讲"],
-  "需求开发（跟进度）": ["需求开发（跟进度）", "研发进展"],
+  需求开发: ["需求开发", "需求开发（跟进度）", "研发进展"],
   需求转测: ["需求转测"],
   问题单清理: ["问题单清理"],
   需求上线: ["需求上线", "规划上线时间"]
@@ -21,7 +21,7 @@ const stageKeywords: Array<{ stage: Requirement["stage"]; keywords: string[] }> 
   { stage: "需求上线", keywords: ["上线", "已上线", "投产"] },
   { stage: "问题单清理", keywords: ["问题单清理", "收口", "清理"] },
   { stage: "需求转测", keywords: ["转测", "测试中", "联调测试"] },
-  { stage: "需求开发（跟进度）", keywords: ["开发", "研发进展", "编码", "实现"] },
+  { stage: "需求开发", keywords: ["需求开发", "开发", "编码", "实现"] },
   { stage: "需求串讲", keywords: ["串讲"] },
   { stage: "需求评审", keywords: ["评审"] },
   { stage: "需求会签", keywords: ["会签"] },
@@ -50,30 +50,23 @@ function inferStageFromText(value: string): Requirement["stage"] {
 }
 
 export function inferRequirementStage(input: Record<string, unknown>): Requirement["stage"] {
-  const directSources = [
-    pickFirst(input, ["stage", "阶段"]),
-    pickFirst(input, ["状态"]),
-    pickFirst(input, ["研发进展"]),
-    pickFirst(input, ["备注"]),
-    pickFirst(input, ["验证策略"]),
-    pickFirst(input, ["规划上线时间"])
-  ]
-    .map((item) => String(item ?? "").trim())
-    .filter(Boolean);
+  const status = String(pickFirst(input, ["状态", "status"]) || "");
+  const progressStage = String(pickFirst(input, ["研发进展", "stage"]) || "");
+  const progressText = String(pickFirst(input, ["进度"]) || "");
+  const note = String(pickFirst(input, ["备注", "风险"]) || "");
+  const onlinePlanTime = toDateStr(pickFirst(input, ["规划上线时间", "onlinePlanTime"]));
+  const progressPercent = clampNumber(pickFirst(input, ["进度百分比", "progressPercent", "进度"]), 0, 100);
 
-  for (const value of directSources) {
+  for (const value of [status, progressStage, progressText, note, onlinePlanTime].filter(Boolean)) {
     const inferred = inferStageFromText(value);
     if (inferred !== "未识别阶段") return inferred;
   }
 
-  const progressPercent = clampNumber(pickFirst(input, ["进度百分比", "progressPercent", "进度"]), 0, 100);
   const hasRisk = String(pickFirst(input, ["风险", "risk"]) || "").trim();
-  const onlinePlanTime = toDateStr(pickFirst(input, ["规划上线时间", "onlinePlanTime"]));
-
   if (progressPercent >= 100) return "需求上线";
   if (progressPercent >= 90) return "问题单清理";
   if (progressPercent >= 75) return "需求转测";
-  if (progressPercent >= 45) return "需求开发（跟进度）";
+  if (progressPercent >= 45) return "需求开发";
   if (progressPercent >= 30) return "需求评审";
   if (progressPercent > 0 || hasRisk || onlinePlanTime) return "需求澄清";
   return "需求基线";

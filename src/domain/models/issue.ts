@@ -13,18 +13,15 @@ export type Issue = VersionInfo & {
   title: string;
   description: string;
   requirementId: string;
-
   severity: IssueSeverity;
   severityRaw: string;
   severityScore: number;
-
   owner: string;
   tester: string;
   currentOwner: string;
   devOwner: string;
   testOwner: string;
   team: string;
-
   status: IssueStatus;
   stage: string;
   issueStage: string;
@@ -44,11 +41,9 @@ export type Issue = VersionInfo & {
   foundVersion: string;
   foundIteration: string;
   versionRelation: IssueVersionRelation;
-
   legacyReasonAnalysis: string;
   legacyMitigation: string;
   legacyUserImpact: string;
-
   createdAt: string;
   dueDate: string;
   acceptTime: string;
@@ -57,7 +52,6 @@ export type Issue = VersionInfo & {
   fixedTime: string;
   onlineTime: string;
   closeTime: string;
-
   tags: string[];
   riskOwner: string;
   submitLagDays: number | null;

@@ -15,6 +15,7 @@ export type VersionTimelineRisk = {
 };
 
 export type VersionTimelineMilestoneView = VersionTimelineMilestoneConfig & {
+  id: string;
   fullVersion: string;
   isoDate: string;
   transferProgressActual: number | null;
@@ -196,6 +197,7 @@ export function buildVersionTimelineBoardView(args: {
 
         return {
           ...milestone,
+          id: `${config.versionLine}/${config.releaseVersion}/${fullVersion}/${milestone.dateLabel}`,
           fullVersion,
           isoDate,
           transferProgressActual,

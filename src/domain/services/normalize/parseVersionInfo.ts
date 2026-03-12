@@ -22,9 +22,8 @@ function normalizeSourceVersion(value: string): string {
   return value
     .toUpperCase()
     .replace(/\s+/g, "")
-    .replace(/SP(\d+)/g, (_, patch: string) => `.${patch}`)
-    .replace(/RC(\d+)/g, (_, patch: string) => `.${patch}`)
-    .replace(/-(\d{1,2})$/, ".$1");
+    .replace(/SP(\d+)/g, ".$1")
+    .replace(/RC(\d+)/g, ".$1");
 }
 
 function parseSingleVersion(value: unknown) {
@@ -33,14 +32,12 @@ function parseSingleVersion(value: unknown) {
     return { releaseVersion: "", cycleVersion: "", patchVersion: "", fullVersion: "" };
   }
 
-  const matched = source.match(/(\d+(?:\.\d+){0,2})(?:-?(B\d+))?(?:\.(\d+))?/);
-  if (!matched) {
-    return { releaseVersion: "", cycleVersion: "", patchVersion: "", fullVersion: "" };
-  }
+  const releaseMatch = source.match(/\d+(?:\.\d+){1,2}(?:-HCSO)?/);
+  const releaseVersion = releaseMatch?.[0] ?? "";
 
-  const releaseVersion = matched[1] ?? "";
-  const cycleVersion = matched[2] ?? "";
-  const patchVersion = matched[3] ?? "";
+  const cycleMatch = source.match(/(?:^|[-_])(B\d+|REVIEW)(?:[._-](\d+))?$/);
+  const cycleVersion = cycleMatch?.[1] ?? "";
+  const patchVersion = cycleMatch?.[2] ?? "";
   const fullVersion = cycleVersion
     ? `${releaseVersion}-${cycleVersion}${patchVersion ? `.${patchVersion}` : ""}`
     : releaseVersion;
@@ -50,7 +47,7 @@ function parseSingleVersion(value: unknown) {
 
 export function parseVersionInfo(value: unknown[] | unknown, versionLineHint?: unknown): VersionInfo {
   const candidates = (Array.isArray(value) ? value : [value]).map(cleanText).filter(Boolean);
-  const raw = candidates.find((item) => /(\d+(?:\.\d+){0,2})(?:-?B\d+)?(?:\.\d+)?/i.test(item)) ?? candidates[0] ?? "";
+  const raw = candidates.find((item) => /\d+(?:\.\d+){1,2}(?:-HCSO)?(?:-(?:B\d+|REVIEW)(?:\.\d+)?)?/i.test(item)) ?? candidates[0] ?? "";
   const parsed = parseSingleVersion(raw);
   const versionLine = normalizeVersionLine(versionLineHint ?? candidates.join(" ") ?? raw);
   const fullVersion = parsed.fullVersion || parsed.releaseVersion;
@@ -137,7 +134,7 @@ export function parseFilterToken(value: string): VersionFilter {
 
 export function buildVersionOptions(lines: string[], releases: string[], cycles: string[], fulls: string[]): VersionOption[] {
   return [
-    ...lines.sort((a, b) => a.localeCompare(b, "zh-CN")).map((value) => ({ value: getFilterToken("SCENE", value), label: `[大版本] ${value}` })),
+    ...lines.sort((a, b) => a.localeCompare(b, "zh-CN")).map((value) => ({ value: getFilterToken("SCENE", value), label: `[大版本线] ${value}` })),
     ...releases.sort((a, b) => a.localeCompare(b, "zh-CN")).map((value) => ({ value: getFilterToken("MAJOR", value), label: `[版本号] ${value}` })),
     ...cycles.sort((a, b) => a.localeCompare(b, "zh-CN")).map((value) => ({ value: getFilterToken("CYCLE", value), label: `[小迭代] ${value}` })),
     ...fulls.sort((a, b) => a.localeCompare(b, "zh-CN")).map((value) => ({ value: getFilterToken("FULL", value), label: `[完整版本] ${value}` }))
@@ -146,7 +143,7 @@ export function buildVersionOptions(lines: string[], releases: string[], cycles:
 
 export function formatVersionScopeLabel(level: VersionFilter["level"], key: string): string {
   if (level === "ALL") return "全部版本";
-  if (level === "SCENE") return `大版本 ${key}`;
+  if (level === "SCENE") return `大版本线 ${key}`;
   if (level === "MAJOR") return `版本号 ${key}`;
   if (level === "CYCLE") return `小迭代 ${key}`;
   return `完整版本 ${key}`;

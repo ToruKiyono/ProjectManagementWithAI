@@ -10,8 +10,8 @@ export function isIssueOpen(issue: Issue): boolean {
 }
 
 export function isRequirementBehindSchedule(requirement: Requirement, today = todayLocalStr()) {
-  if (requirement.stage !== "需求开发（跟进度）") return { lagging: false, expected: 0 };
-  const devDate = requirement.stageDates["需求开发（跟进度）"];
+  if (requirement.stage !== "需求开发") return { lagging: false, expected: 0 };
+  const devDate = requirement.stageDates["需求开发"];
   const transferDate = requirement.stageDates["需求转测"];
   const total = daysBetween(devDate, transferDate);
   const elapsed = daysBetween(devDate, today);

@@ -5,5 +5,12 @@ export type IterationTimeline = VersionInfo & {
   startDate: string;
   endDate: string;
   owner: string;
+  weekRange: string;
+  dateLabel: string;
+  label: string;
+  branch: string;
+  toolkit: string;
+  milestoneType: string;
+  transferProgress: number;
   raw: Record<string, unknown>;
 };
